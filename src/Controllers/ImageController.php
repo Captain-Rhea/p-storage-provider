@@ -16,8 +16,43 @@ class ImageController
     public function getImageList(Request $request, Response $response): Response
     {
         try {
-            $images = Image::orderBy('uploaded_at', 'desc')->get();
-            return ResponseHandle::success($response, $images, 'Image list retrieved successfully');
+            $page = (int)($request->getQueryParams()['page'] ?? 1);
+            $limit = (int)($request->getQueryParams()['limit'] ?? 10);
+            $search = $request->getQueryParams()['search'] ?? null;
+
+            $query = Image::orderBy('image_id', 'desc');
+
+            if ($search) {
+                $query->where('name', 'like', '%' . $search . '%');
+            }
+
+            $images = $query->paginate($limit, ['*'], 'page', $page);
+
+            $transformedData = $images->map(function ($image) {
+                return [
+                    'image_id' => $image->image_id,
+                    'name' => $image->name,
+                    'base_url' => $image->base_url,
+                    'lazy_url' => $image->lazy_url,
+                    'base_size' => $image->base_size,
+                    'lazy_size' => $image->lazy_size,
+                    'uploaded_by' => $image->uploaded_by,
+                    'uploaded_at' => $image->uploaded_at->toDateTimeString(),
+                    'updated_at' => $image->updated_at->toDateTimeString()
+                ];
+            });
+
+            $data = [
+                'pagination' => [
+                    'current_page' => $images->currentPage(),
+                    'per_page' => $images->perPage(),
+                    'total' => $images->total(),
+                    'last_page' => $images->lastPage(),
+                ],
+                'data' => $transformedData
+            ];
+
+            return ResponseHandle::success($response, $data, 'Image list retrieved successfully');
         } catch (Exception $e) {
             return ResponseHandle::error($response, $e->getMessage(), 500);
         }
@@ -102,6 +137,39 @@ class ImageController
         }
     }
 
+    // PUT /v1/image - Update image name
+    public function updateImageName(Request $request, Response $response, array $args): Response
+    {
+        try {
+            $id = $args['id'];
+            $image = Image::find($id);
+
+            if (!$image) {
+                return ResponseHandle::error($response, "Image with ID $id not found", 404);
+            }
+
+            $body = json_decode((string)$request->getBody());
+            $newName = $body->new_name ?? null;
+
+            if (empty($newName)) {
+                return ResponseHandle::error($response, "New name is required", 400);
+            }
+
+            $image->name = $newName;
+            $image->save();
+
+            $updatedImage = [
+                'image_id' => $image->image_id,
+                'name' => $image->name,
+                'updated_at' => $image->updated_at->toDateTimeString()
+            ];
+
+            return ResponseHandle::success($response, $updatedImage, "Image name updated successfully");
+        } catch (Exception $e) {
+            return ResponseHandle::error($response, $e->getMessage(), 500);
+        }
+    }
+
     // GET /v1/image/{id} - Retrieve an image by ID
     public function getImageById(Request $request, Response $response, $args): Response
     {
@@ -113,7 +181,19 @@ class ImageController
                 return ResponseHandle::error($response, "Image with ID $id not found", 404);
             }
 
-            return ResponseHandle::success($response, $image, "Image with ID $id retrieved successfully");
+            $transformedImageModel = [
+                'image_id' => $image->image_id,
+                'name' => $image->name,
+                'base_url' => $image->base_url,
+                'lazy_url' => $image->lazy_url,
+                'base_size' => $image->base_size,
+                'lazy_size' => $image->lazy_size,
+                'uploaded_by' => $image->uploaded_by,
+                'uploaded_at' => $image->uploaded_at->toDateTimeString(),
+                'updated_at' => $image->updated_at->toDateTimeString()
+            ];
+
+            return ResponseHandle::success($response, $transformedImageModel, "Image with ID $id retrieved successfully");
         } catch (Exception $e) {
             return ResponseHandle::error($response, $e->getMessage(), 500);
         }

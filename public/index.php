@@ -3,6 +3,8 @@
 use Slim\Factory\AppFactory;
 use App\Database\Connection;
 use Dotenv\Dotenv;
+use Psr\Http\Message\ServerRequestInterface as Request;
+use Psr\Http\Server\RequestHandlerInterface as RequestHandler;
 
 require __DIR__ . '/../vendor/autoload.php';
 
@@ -11,7 +13,7 @@ $dotenv->load();
 
 $app = AppFactory::create();
 
-$app->add(function ($request, $handler) {
+$app->add(function (Request $request, RequestHandler $handler) {
     $response = $handler->handle($request);
     return $response
         ->withHeader('Access-Control-Allow-Origin', '*')

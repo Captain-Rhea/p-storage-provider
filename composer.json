@@ -19,6 +19,7 @@
     "illuminate/database": "^11.36",
     "robmorgan/phinx": "^0.16.6",
     "symfony/yaml": "^7.2",
-    "intervention/image": "^3.10"
+    "intervention/image": "^3.10",
+    "illuminate/pagination": "^11.36"
   }
 }

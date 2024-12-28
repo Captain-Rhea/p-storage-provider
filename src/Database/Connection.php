@@ -20,7 +20,6 @@ class Connection
             'prefix'    => '',
         ]);
 
-        // Set the capsule instance as globally available
         $capsule->setAsGlobal();
         $capsule->bootEloquent();
     }
