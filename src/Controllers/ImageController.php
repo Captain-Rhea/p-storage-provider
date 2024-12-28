@@ -79,6 +79,17 @@ class ImageController
                 return ResponseHandle::error($response, 'Uploaded file is not a valid image', 400);
             }
 
+            $tempPath = $file->getStream()->getMetadata('uri');
+            $imageSize = getimagesize($tempPath);
+            if ($imageSize === false) {
+                return ResponseHandle::error($response, 'Uploaded file is not a valid image', 400);
+            }
+
+            [$width, $height] = $imageSize;
+            if ($width > 1920 || $height > 1920) {
+                return ResponseHandle::error($response, 'Image dimensions exceed the maximum allowed size of 1920x1920 pixels', 400);
+            }
+
             $year = Carbon::now()->year;
             $month = Carbon::now()->format('m');
             $uploadDir = __DIR__ . "/../../public/uploads/$year/$month";
