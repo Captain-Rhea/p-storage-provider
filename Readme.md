@@ -18,18 +18,18 @@ Edit the `.env` file with your specific configurations. Below is an example:
 
 ```env
 APP_ENV=development
-APP_DEBUG=true
-APP_URL=http://localhost
 
-DB_CONNECTION=mysql
+APP_NAME=StorageProvider
+APP_VERSION=1.0.0
+
 DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=your_database_name
-DB_USERNAME=your_database_user
-DB_PASSWORD=your_database_password
+DB_NAME=storage_db
+DB_USER=root
+DB_PASS=
 
-FILE_BASE_DOMAIN=http://localhost
-UPLOAD_DIRECTORY=public/uploads
+API_GUARD=true
+
+FILE_BASE_DOMAIN=http://localhost:8000
 ```
 
 ---

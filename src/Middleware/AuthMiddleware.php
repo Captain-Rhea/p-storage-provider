@@ -13,6 +13,11 @@ class AuthMiddleware implements MiddlewareInterface
     {
         $authHeader = $request->getHeaderLine('Authorization');
 
+        $isGuardEnabled = filter_var($_ENV['API_GUARD'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        if (!$isGuardEnabled) {
+            return $handler->handle($request);
+        }
+
         if (empty($authHeader) || !$this->isValidToken($authHeader)) {
             $response = new \Slim\Psr7\Response();
             $response->getBody()->write(json_encode([
