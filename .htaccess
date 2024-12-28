@@ -1,24 +1,3 @@
-# เปิดใช้งาน URL Rewrite
-Options +FollowSymLinks
-RewriteEngine On
-
-# ตั้งค่า DirectoryIndex ให้ชี้ไปที่ app/index.php
-DirectoryIndex app/index.php
-
-# Rewrite Rule สำหรับส่งคำขอไปยัง app/index.php
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^(.*)$ app/index.php [QSA,L]
-
-# อนุญาต CORS (ถ้าจำเป็น)
-<IfModule mod_headers.c>
-    Header set Access-Control-Allow-Origin "*"
-    Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-    Header set Access-Control-Allow-Headers "Origin, Content-Type, Authorization"
-</IfModule>
-
-# ป้องกันการเข้าถึงไฟล์สำคัญ
-<FilesMatch "\.(htaccess|htpasswd|env|ini|log|sh|bak|sql)$">
-    Order Allow,Deny
-    Deny from all
-</FilesMatch>
+RewriteEngine on
+RewriteRule ^$ public/ [L]
+RewriteRule (.*) public/$1 [L]

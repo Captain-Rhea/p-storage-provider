@@ -1,3 +1,10 @@
 RewriteEngine On
+
+RewriteCond %{REQUEST_URI} ^/uploads/
+RewriteCond %{DOCUMENT_ROOT}/../uploads/%{REQUEST_URI:8} -f [OR]
+RewriteCond %{DOCUMENT_ROOT}/../uploads/%{REQUEST_URI:8} -d
+RewriteRule ^uploads/.*$ - [R=404,L]
+
 RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^ index.php [QSA,L]

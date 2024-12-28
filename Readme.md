@@ -1,4 +1,4 @@
-# API Documentation for Slim 4 Application
+# API Documentation for Storage Provider
 
 ## Configuring Environment Variables
 

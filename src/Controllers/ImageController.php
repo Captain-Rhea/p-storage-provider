@@ -45,8 +45,8 @@ class ImageController
             }
 
             $year = Carbon::now()->year;
-            $month = strtolower(Carbon::now()->format('F'));
-            $uploadDir = __DIR__ . "/../../uploads/$year/$month";
+            $month = Carbon::now()->format('m');
+            $uploadDir = __DIR__ . "/../../public/uploads/$year/$month";
 
             if (!is_dir($uploadDir) && !mkdir($uploadDir, 0755, true) && !is_dir($uploadDir)) {
                 throw new Exception('Failed to create upload directory');
@@ -86,7 +86,17 @@ class ImageController
                 'uploaded_by' => 1
             ]);
 
-            return ResponseHandle::success($response, $imageModel, 'Image uploaded successfully', 201);
+            $transformedImageModel = [
+                'image_id' => $imageModel->image_id,
+                'name' => $imageModel->name,
+                'base_url' => $imageModel->base_url,
+                'lazy_url' => $imageModel->lazy_url,
+                'base_size' => $imageModel->base_size,
+                'lazy_size' => $imageModel->lazy_size,
+                'uploaded_at' => $imageModel->uploaded_at->toDateTimeString()
+            ];
+
+            return ResponseHandle::success($response, $transformedImageModel, 'Image uploaded successfully', 201);
         } catch (Exception $e) {
             return ResponseHandle::error($response, $e->getMessage(), 500);
         }
@@ -120,8 +130,8 @@ class ImageController
                 throw new Exception("Image with ID $id not found");
             }
 
-            $filePath = __DIR__ . "/../../uploads/" . $image->path . '/' . basename($image->base_url);
-            $thumbnailPath = __DIR__ . "/../../uploads/" . $image->path . '/' . basename($image->lazy_url);
+            $filePath = __DIR__ . "/../../public/uploads/" . $image->path . '/' . basename($image->base_url);
+            $thumbnailPath = __DIR__ . "/../../public/uploads/" . $image->path . '/' . basename($image->lazy_url);
 
             if (file_exists($filePath) && !unlink($filePath)) {
                 throw new Exception("Failed to delete base image file");
