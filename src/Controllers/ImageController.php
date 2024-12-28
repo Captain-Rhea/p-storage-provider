@@ -30,18 +30,18 @@ class ImageController
             $uploadedFiles = $request->getUploadedFiles();
 
             if (empty($uploadedFiles['file'])) {
-                throw new Exception('No file uploaded');
+                return ResponseHandle::error($response, 'No file uploaded', 400);
             }
 
             $file = $uploadedFiles['file'];
 
             if ($file->getError() !== UPLOAD_ERR_OK) {
-                throw new Exception('Upload failed');
+                return ResponseHandle::error($response, 'Upload failed', 400);
             }
 
             $fileType = $file->getClientMediaType();
             if (!in_array($fileType, ['image/jpeg', 'image/png', 'image/webp'])) {
-                throw new Exception('Uploaded file is not a valid image');
+                return ResponseHandle::error($response, 'Uploaded file is not a valid image', 400);
             }
 
             $year = Carbon::now()->year;
@@ -110,12 +110,12 @@ class ImageController
             $image = Image::find($id);
 
             if (!$image) {
-                throw new Exception("Image with ID $id not found");
+                return ResponseHandle::error($response, "Image with ID $id not found", 404);
             }
 
             return ResponseHandle::success($response, $image, "Image with ID $id retrieved successfully");
         } catch (Exception $e) {
-            return ResponseHandle::error($response, $e->getMessage(), 404);
+            return ResponseHandle::error($response, $e->getMessage(), 500);
         }
     }
 
@@ -127,7 +127,7 @@ class ImageController
             $image = Image::find($id);
 
             if (!$image) {
-                throw new Exception("Image with ID $id not found");
+                return ResponseHandle::error($response, "Image with ID $id not found", 404);
             }
 
             $filePath = __DIR__ . "/../../public/uploads/" . $image->path . '/' . basename($image->base_url);
@@ -143,7 +143,7 @@ class ImageController
 
             $image->delete();
 
-            return ResponseHandle::success($response, null, "Image with ID $id deleted successfully");
+            return ResponseHandle::success($response, null, "Image deleted successfully");
         } catch (Exception $e) {
             return ResponseHandle::error($response, $e->getMessage(), 500);
         }
