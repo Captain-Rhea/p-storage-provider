@@ -20,6 +20,9 @@
     "robmorgan/phinx": "^0.16.6",
     "symfony/yaml": "^7.2",
     "intervention/image": "^3.10",
-    "illuminate/pagination": "^11.36"
+    "illuminate/pagination": "^11.36",
+    "illuminate/events": "^11.36",
+    "illuminate/support": "^11.37",
+    "guzzlehttp/guzzle": "^7.9"
   }
 }

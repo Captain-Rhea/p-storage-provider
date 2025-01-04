@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
 class Image extends Model
 {
@@ -11,6 +12,7 @@ class Image extends Model
     public $timestamps = true;
 
     protected $fillable = [
+        'group',
         'name',
         'path',
         'base_url',
@@ -22,4 +24,18 @@ class Image extends Model
 
     const CREATED_AT = 'uploaded_at';
     const UPDATED_AT = 'updated_at';
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($model) {
+            $model->uploaded_at = Carbon::now('Asia/Bangkok');
+            $model->updated_at = Carbon::now('Asia/Bangkok');
+        });
+
+        static::updating(function ($model) {
+            $model->updated_at = Carbon::now('Asia/Bangkok');
+        });
+    }
 }

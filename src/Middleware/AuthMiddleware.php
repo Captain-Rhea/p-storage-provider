@@ -2,6 +2,7 @@
 
 namespace App\Middleware;
 
+use GuzzleHttp\Client;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Psr\Http\Server\MiddlewareInterface;
@@ -35,7 +36,27 @@ class AuthMiddleware implements MiddlewareInterface
     private function isValidToken(string $token): bool
     {
         $token = str_replace('Bearer ', '', $token);
+        $url = $_ENV['IDP_API'] . '/v1/auth/verify-token';
 
-        return $token === 'mysecrettoken';
+        try {
+            $client = new Client();
+            $response = $client->post($url, [
+                'json' => [
+                    'token' => $token,
+                ],
+                'headers' => [
+                    'Accept' => 'application/json',
+                ],
+            ]);
+
+            if ($response->getStatusCode() === 200) {
+                $body = json_decode($response->getBody()->getContents(), true);
+                return $body['status'] === 'success' ?? false;
+            }
+        } catch (\Exception $e) {
+            error_log('Token validation error: ' . $e->getMessage());
+        }
+
+        return false;
     }
 }

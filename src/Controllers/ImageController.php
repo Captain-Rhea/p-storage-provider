@@ -18,12 +18,26 @@ class ImageController
         try {
             $page = (int)($request->getQueryParams()['page'] ?? 1);
             $limit = (int)($request->getQueryParams()['limit'] ?? 10);
-            $search = $request->getQueryParams()['search'] ?? null;
+            $group = $request->getQueryParams()['group'] ?? null;
+            $name = $request->getQueryParams()['name'] ?? null;
+            $startDate = $request->getQueryParams()['start_date'] ?? null;
+            $endDate = $request->getQueryParams()['end_date'] ?? null;
 
             $query = Image::orderBy('image_id', 'desc');
 
-            if ($search) {
-                $query->where('name', 'like', '%' . $search . '%');
+            if ($group) {
+                $query->where('group', $group);
+            }
+
+            if ($name) {
+                $query->where('name', 'like', '%' . $name . '%');
+            }
+
+            if ($startDate) {
+                $query->whereDate('uploaded_at', '>=', $startDate);
+            }
+            if ($endDate) {
+                $query->whereDate('uploaded_at', '<=', $endDate);
             }
 
             $images = $query->paginate($limit, ['*'], 'page', $page);
@@ -31,6 +45,7 @@ class ImageController
             $transformedData = $images->map(function ($image) {
                 return [
                     'image_id' => $image->image_id,
+                    'group' => $image->group,
                     'name' => $image->name,
                     'base_url' => $image->base_url,
                     'lazy_url' => $image->lazy_url,
@@ -63,6 +78,7 @@ class ImageController
     {
         try {
             $uploadedFiles = $request->getUploadedFiles();
+            $parsedBody = $request->getParsedBody();
 
             if (empty($uploadedFiles['file'])) {
                 return ResponseHandle::error($response, 'No file uploaded', 400);
@@ -90,8 +106,8 @@ class ImageController
                 return ResponseHandle::error($response, 'Image dimensions exceed the maximum allowed size of 1920x1920 pixels', 400);
             }
 
-            $year = Carbon::now()->year;
-            $month = Carbon::now()->format('m');
+            $year = Carbon::now('Asia/Bangkok')->year;
+            $month = Carbon::now('Asia/Bangkok')->format('m');
             $uploadDir = __DIR__ . "/../../public/uploads/$year/$month";
 
             if (!is_dir($uploadDir) && !mkdir($uploadDir, 0755, true) && !is_dir($uploadDir)) {
@@ -121,25 +137,30 @@ class ImageController
             $lazyUrl = $_ENV['FILE_BASE_DOMAIN'] . "/uploads/$year/$month/$lazyImageName";
 
             $originalName = pathinfo($file->getClientFilename(), PATHINFO_FILENAME);
+            $group = $parsedBody['group'] ?? 'default';
+            $uploadedBy = isset($parsedBody['uploaded_by']) ? (int)$parsedBody['uploaded_by'] : 1;
 
             $imageModel = Image::create([
+                'group' => $group,
                 'name' => $originalName,
                 'path' => "$year/$month",
                 'base_url' => $baseUrl,
                 'lazy_url' => $lazyUrl,
                 'base_size' => $baseSize,
                 'lazy_size' => $lazySize,
-                'uploaded_by' => 1
+                'uploaded_by' => $uploadedBy
             ]);
 
             $transformedImageModel = [
                 'image_id' => $imageModel->image_id,
+                'group' => $imageModel->group,
                 'name' => $imageModel->name,
                 'base_url' => $imageModel->base_url,
                 'lazy_url' => $imageModel->lazy_url,
                 'base_size' => $imageModel->base_size,
                 'lazy_size' => $imageModel->lazy_size,
-                'uploaded_at' => $imageModel->uploaded_at->toDateTimeString()
+                'uploaded_at' => $imageModel->uploaded_at->toDateTimeString(),
+                'uploaded_by' => $imageModel->uploaded_by
             ];
 
             return ResponseHandle::success($response, $transformedImageModel, 'Image uploaded successfully', 201);
@@ -194,6 +215,7 @@ class ImageController
 
             $transformedImageModel = [
                 'image_id' => $image->image_id,
+                'group' => $image->group,
                 'name' => $image->name,
                 'base_url' => $image->base_url,
                 'lazy_url' => $image->lazy_url,
