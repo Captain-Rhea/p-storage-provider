@@ -18,16 +18,18 @@ final class CreateImagesTable extends AbstractMigration
             ->addColumn('base_size', 'integer', ['null' => true, 'signed' => false])
             ->addColumn('lazy_size', 'integer', ['null' => true, 'signed' => false])
             ->addColumn('uploaded_by', 'integer', ['null' => true, 'signed' => false])
-            ->addColumn('uploaded_at', 'timestamp', [
-                'default' => 'CURRENT_TIMESTAMP',
-                'null' => false,
-            ])
-            ->addColumn('updated_at', 'timestamp', [
-                'default' => 'CURRENT_TIMESTAMP',
-                'update' => 'CURRENT_TIMESTAMP',
-                'null' => false,
-            ])
+            ->addColumn('uploaded_at', 'timestamp', ['default' => 'CURRENT_TIMESTAMP', 'null' => false])
+            ->addColumn('updated_at', 'timestamp', ['default' => 'CURRENT_TIMESTAMP', 'update' => 'CURRENT_TIMESTAMP', 'null' => false])
             ->addIndex(['uploaded_by'], ['name' => 'idx_uploaded_by'])
+            ->create();
+
+        // สร้างตาราง api_connection
+        $table = $this->table('api_connection', ['id' => 'id']);
+        $table->addColumn('connection_name', 'string', ['limit' => 255, 'null' => false])
+            ->addColumn('connection_key', 'string', ['limit' => 255, 'null' => false])
+            ->addColumn('created_at', 'timestamp', ['default' => 'CURRENT_TIMESTAMP', 'null' => false])
+            ->addColumn('updated_at', 'timestamp', ['default' => 'CURRENT_TIMESTAMP', 'update' => 'CURRENT_TIMESTAMP', 'null' => false])
+            ->addIndex(['connection_key'], ['unique' => true, 'name' => 'idx_connection_key'])
             ->create();
     }
 }
