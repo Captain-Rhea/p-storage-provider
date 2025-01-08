@@ -2,13 +2,13 @@
 
 namespace App\Controllers;
 
+use Exception;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use App\Helpers\ResponseHandle;
-use Exception;
 use Illuminate\Support\Carbon;
-use App\Models\Image;
 use App\Helpers\ImageProcessor;
+use App\Models\Image;
 
 class ImageController
 {

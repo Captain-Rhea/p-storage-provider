@@ -2,10 +2,11 @@
 
 namespace App\Middleware;
 
-use GuzzleHttp\Client;
+use App\Models\ApiConnectionModel;
+use App\Utils\TokenUtils;
+use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
-use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface as RequestHandler;
 
 class AuthMiddleware implements MiddlewareInterface
@@ -14,49 +15,36 @@ class AuthMiddleware implements MiddlewareInterface
     {
         $authHeader = $request->getHeaderLine('Authorization');
 
-        $isGuardEnabled = filter_var($_ENV['API_GUARD'] ?? false, FILTER_VALIDATE_BOOLEAN);
-        if (!$isGuardEnabled) {
-            return $handler->handle($request);
+        if (empty($authHeader)) {
+            return $this->unauthorizedResponse('Authorization header missing');
         }
 
-        if (empty($authHeader) || !$this->isValidToken($authHeader)) {
-            $response = new \Slim\Psr7\Response();
-            $response->getBody()->write(json_encode([
-                'success' => false,
-                'message' => 'Unauthorized'
-            ]));
-            return $response
-                ->withHeader('Content-Type', 'application/json')
-                ->withStatus(401);
-        }
-
-        return $handler->handle($request);
-    }
-
-    private function isValidToken(string $token): bool
-    {
-        $token = str_replace('Bearer ', '', $token);
-        $url = $_ENV['IDP_API'] . '/v1/auth/verify-token';
+        $token = str_replace('Bearer ', '', $authHeader);
+        $token = explode('.', $token);
+        $connectionName = $token[0];
+        $secretKey = $token[1];
+        $existingConnection = ApiConnectionModel::where('connection_name', $connectionName)->first();
+        $token = $existingConnection->connection_key . '.' . $secretKey;
 
         try {
-            $client = new Client();
-            $response = $client->post($url, [
-                'json' => [
-                    'token' => $token,
-                ],
-                'headers' => [
-                    'Accept' => 'application/json',
-                ],
-            ]);
-
-            if ($response->getStatusCode() === 200) {
-                $body = json_decode($response->getBody()->getContents(), true);
-                return $body['status'] === 'success' ?? false;
-            }
+            $decoded = TokenUtils::decodeToken($token);
+            $request = $request->withAttribute('service_detail', (array) $decoded);
+            $request->getAttribute('service_detail');
+            return $handler->handle($request);
         } catch (\Exception $e) {
-            error_log('Token validation error: ' . $e->getMessage());
+            return $this->unauthorizedResponse($e->getMessage());
         }
+    }
 
-        return false;
+    private function unauthorizedResponse(string $message): Response
+    {
+        $response = new \Slim\Psr7\Response();
+        $response->getBody()->write(json_encode([
+            'success' => false,
+            'message' => $message,
+        ]));
+        return $response
+            ->withHeader('Content-Type', 'application/json')
+            ->withStatus(401);
     }
 }
