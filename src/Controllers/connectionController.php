@@ -8,7 +8,6 @@ use Psr\Http\Message\ServerRequestInterface as Request;
 use App\Helpers\ResponseHandle;
 use App\Models\ApiConnectionModel;
 use App\Utils\TokenUtils;
-use Illuminate\Support\Carbon;
 
 class ConnectionController
 {

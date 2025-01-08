@@ -10,6 +10,7 @@ use App\Routes\ConnectionRoute;
 
 return function (App $app) {
     (new ImageRoute($app))->register();
+
     $connectionRouteEnabled = filter_var($_ENV['CONNECTION_ROUTE'] ?? false, FILTER_VALIDATE_BOOLEAN);
     if ($connectionRouteEnabled) {
         (new ConnectionRoute($app))->register();
