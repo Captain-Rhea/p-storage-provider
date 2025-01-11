@@ -207,31 +207,58 @@ class ImageController
         }
     }
 
-    // DELETE /v1/image/{id}
-    public function deleteImage(Request $request, Response $response, $args): Response
+    // DELETE /v1/image
+    public function deleteImages(Request $request, Response $response): Response
     {
         try {
-            $id = $args['id'];
-            $image = Image::find($id);
+            $queryParams = $request->getQueryParams();
+            $ids = $queryParams['ids'] ?? null;
 
-            if (!$image) {
-                return ResponseHandle::error($response, "Image with ID $id not found", 404);
+            if (empty($ids)) {
+                return ResponseHandle::error($response, "Image IDs are required", 400);
             }
 
-            $filePath = __DIR__ . "/../../public/uploads/" . $image->path . '/' . basename($image->base_url);
-            $thumbnailPath = __DIR__ . "/../../public/uploads/" . $image->path . '/' . basename($image->lazy_url);
+            $imageIds = explode(',', $ids);
 
-            if (file_exists($filePath) && !unlink($filePath)) {
-                throw new Exception("Failed to delete base image file");
+            $images = Image::whereIn('image_id', $imageIds)->get();
+
+            if ($images->isEmpty()) {
+                return ResponseHandle::error($response, "No images found for the provided IDs", 404);
             }
 
-            if (file_exists($thumbnailPath) && !unlink($thumbnailPath)) {
-                throw new Exception("Failed to delete lazy image file");
+            $errors = [];
+            foreach ($images as $image) {
+                try {
+                    $filePath = __DIR__ . "/../../public/uploads/" . $image->path . '/' . basename($image->base_url);
+                    $thumbnailPath = __DIR__ . "/../../public/uploads/" . $image->path . '/' . basename($image->lazy_url);
+
+                    if (file_exists($filePath) && !unlink($filePath)) {
+                        throw new Exception("Failed to delete base image file for ID {$image->id}");
+                    }
+
+                    if (file_exists($thumbnailPath) && !unlink($thumbnailPath)) {
+                        throw new Exception("Failed to delete lazy image file for ID {$image->id}");
+                    }
+
+                    $image->delete();
+                } catch (Exception $e) {
+                    $errors[] = [
+                        'image_id' => $image->id,
+                        'error' => $e->getMessage(),
+                    ];
+                }
             }
 
-            $image->delete();
+            if (!empty($errors)) {
+                return ResponseHandle::success($response, [
+                    'deleted' => $images->count() - count($errors),
+                    'errors' => $errors,
+                ], "Some images could not be deleted");
+            }
 
-            return ResponseHandle::success($response, null, "Image deleted successfully");
+            return ResponseHandle::success($response, [
+                'deleted' => $images->count(),
+            ], "All images deleted successfully");
         } catch (Exception $e) {
             return ResponseHandle::error($response, $e->getMessage(), 500);
         }
