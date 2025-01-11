@@ -12,18 +12,23 @@ use App\Models\Image;
 
 class ImageController
 {
-    // GET /v1/image - Retrieve all images
+    // GET /v1/image
     public function getImageList(Request $request, Response $response): Response
     {
         try {
             $page = (int)($request->getQueryParams()['page'] ?? 1);
-            $limit = (int)($request->getQueryParams()['limit'] ?? 10);
+            $limit = (int)($request->getQueryParams()['per_page'] ?? 10);
+            $imageId = $request->getQueryParams()['image_id'] ?? null;
             $group = $request->getQueryParams()['group'] ?? null;
             $name = $request->getQueryParams()['name'] ?? null;
             $startDate = $request->getQueryParams()['start_date'] ?? null;
             $endDate = $request->getQueryParams()['end_date'] ?? null;
 
             $query = Image::orderBy('image_id', 'desc');
+
+            if ($imageId) {
+                $query->where('image_id', $imageId);
+            }
 
             if ($group) {
                 $query->where('group', $group);
@@ -73,7 +78,7 @@ class ImageController
         }
     }
 
-    // POST /v1/image - Upload an image
+    // POST /v1/image
     public function uploadImage(Request $request, Response $response): Response
     {
         try {
@@ -169,7 +174,7 @@ class ImageController
         }
     }
 
-    // PUT /v1/image - Update image name
+    // PUT /v1/image
     public function updateImageName(Request $request, Response $response, array $args): Response
     {
         try {
@@ -202,37 +207,7 @@ class ImageController
         }
     }
 
-    // GET /v1/image/{id} - Retrieve an image by ID
-    public function getImageById(Request $request, Response $response, $args): Response
-    {
-        try {
-            $id = $args['id'];
-            $image = Image::find($id);
-
-            if (!$image) {
-                return ResponseHandle::error($response, "Image with ID $id not found", 404);
-            }
-
-            $transformedImageModel = [
-                'image_id' => $image->image_id,
-                'group' => $image->group,
-                'name' => $image->name,
-                'base_url' => $image->base_url,
-                'lazy_url' => $image->lazy_url,
-                'base_size' => $image->base_size,
-                'lazy_size' => $image->lazy_size,
-                'uploaded_by' => $image->uploaded_by,
-                'uploaded_at' => $image->uploaded_at->toDateTimeString(),
-                'updated_at' => $image->updated_at->toDateTimeString()
-            ];
-
-            return ResponseHandle::success($response, $transformedImageModel, "Image with ID $id retrieved successfully");
-        } catch (Exception $e) {
-            return ResponseHandle::error($response, $e->getMessage(), 500);
-        }
-    }
-
-    // DELETE /v1/image/{id} - Delete an image by ID
+    // DELETE /v1/image/{id}
     public function deleteImage(Request $request, Response $response, $args): Response
     {
         try {
@@ -257,6 +232,26 @@ class ImageController
             $image->delete();
 
             return ResponseHandle::success($response, null, "Image deleted successfully");
+        } catch (Exception $e) {
+            return ResponseHandle::error($response, $e->getMessage(), 500);
+        }
+    }
+
+    // GET /v1/storage
+    public function getStorageUsed(Request $request, Response $response): Response
+    {
+        try {
+            $images = Image::all();
+
+            $baseSizeTotal = $images->sum('base_size');
+            $lazySizeTotal = $images->sum('lazy_size');
+            $totalSize = $baseSizeTotal + $lazySizeTotal;
+
+            return ResponseHandle::success($response, [
+                'base_size_total' => $baseSizeTotal,
+                'lazy_size_total' => $lazySizeTotal,
+                'total_size' => $totalSize
+            ], 'Storage size retrieved successfully');
         } catch (Exception $e) {
             return ResponseHandle::error($response, $e->getMessage(), 500);
         }
