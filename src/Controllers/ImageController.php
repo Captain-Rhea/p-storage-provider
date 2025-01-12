@@ -12,6 +12,26 @@ use App\Models\Image;
 
 class ImageController
 {
+    // GET /v1/storage
+    public function getStorageUsed(Request $request, Response $response): Response
+    {
+        try {
+            $images = Image::all();
+
+            $baseSizeTotal = $images->sum('base_size');
+            $lazySizeTotal = $images->sum('lazy_size');
+            $totalSize = $baseSizeTotal + $lazySizeTotal;
+
+            return ResponseHandle::success($response, [
+                'base_size_total' => $baseSizeTotal,
+                'lazy_size_total' => $lazySizeTotal,
+                'total_size' => $totalSize
+            ], 'Storage size retrieved successfully');
+        } catch (Exception $e) {
+            return ResponseHandle::error($response, $e->getMessage(), 500);
+        }
+    }
+
     // GET /v1/image
     public function getImageList(Request $request, Response $response): Response
     {
@@ -259,26 +279,6 @@ class ImageController
             return ResponseHandle::success($response, [
                 'deleted' => $images->count(),
             ], "All images deleted successfully");
-        } catch (Exception $e) {
-            return ResponseHandle::error($response, $e->getMessage(), 500);
-        }
-    }
-
-    // GET /v1/storage
-    public function getStorageUsed(Request $request, Response $response): Response
-    {
-        try {
-            $images = Image::all();
-
-            $baseSizeTotal = $images->sum('base_size');
-            $lazySizeTotal = $images->sum('lazy_size');
-            $totalSize = $baseSizeTotal + $lazySizeTotal;
-
-            return ResponseHandle::success($response, [
-                'base_size_total' => $baseSizeTotal,
-                'lazy_size_total' => $lazySizeTotal,
-                'total_size' => $totalSize
-            ], 'Storage size retrieved successfully');
         } catch (Exception $e) {
             return ResponseHandle::error($response, $e->getMessage(), 500);
         }
