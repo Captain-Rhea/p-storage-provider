@@ -5,6 +5,11 @@ RewriteCond %{DOCUMENT_ROOT}/../uploads/%{REQUEST_URI:8} -f [OR]
 RewriteCond %{DOCUMENT_ROOT}/../uploads/%{REQUEST_URI:8} -d
 RewriteRule ^uploads/.*$ - [R=404,L]
 
+RewriteCond %{REQUEST_URI} ^/gui(/|$)
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^gui/.*$ - [L]
+
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^ index.php [QSA,L]

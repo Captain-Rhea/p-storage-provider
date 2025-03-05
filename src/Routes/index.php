@@ -9,6 +9,14 @@ use App\Routes\ImageRoute;
 use App\Routes\ConnectionRoute;
 
 return function (App $app) {
+    $app->get('/', function (Request $request, Response $response) {
+        $data = [
+            'service' => 'storage-api',
+            'version' => '1.0.0'
+        ];
+        return ResponseHandle::success($response, $data);
+    });
+
     (new ImageRoute($app))->register();
 
     $connectionRouteEnabled = filter_var($_ENV['CONNECTION_ROUTE'] ?? false, FILTER_VALIDATE_BOOLEAN);
