@@ -5,21 +5,23 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 
-class Image extends Model
+class ImageModel extends Model
 {
     protected $table = 'images';
-    protected $primaryKey = 'image_id';
+    protected $primaryKey = 'id';
     public $timestamps = true;
 
     protected $fillable = [
-        'group',
-        'name',
-        'path',
-        'base_url',
-        'lazy_url',
-        'base_size',
-        'lazy_size',
+        'folder_id',
+        'image_name',
+        'image_path',
+        'image_url',
+        'image_size',
+        'image_type',
+        'width',
+        'height',
         'uploaded_by',
+        'updated_by',
     ];
 
     const CREATED_AT = 'uploaded_at';
@@ -37,5 +39,10 @@ class Image extends Model
         static::updating(function ($model) {
             $model->updated_at = Carbon::now('Asia/Bangkok');
         });
+    }
+
+    public function folder()
+    {
+        return $this->belongsTo(FolderModel::class, 'folder_id');
     }
 }

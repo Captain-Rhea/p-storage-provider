@@ -11,10 +11,9 @@ use App\Routes\ConnectionRoute;
 return function (App $app) {
     $app->get('/', function (Request $request, Response $response) {
         $data = [
-            'service' => 'storage-api',
-            'version' => '1.0.0'
+            'version' => $_ENV['API_VERSION'] ?? 'Version Error!'
         ];
-        return ResponseHandle::success($response, $data);
+        return ResponseHandle::success($response, $data, 'Storage Provider - API Services');
     });
 
     (new ImageRoute($app))->register();
