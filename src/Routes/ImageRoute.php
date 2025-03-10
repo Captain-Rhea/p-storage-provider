@@ -9,12 +9,11 @@ class ImageRoute extends BaseRoute
 {
     public function register(): void
     {
-        $this->app->group('/v1', function ($group) {
+        $this->app->group('/api/v1', function ($group) {
             $group->get('/image', [ImageController::class, 'getImageList']);
             $group->post('/image', [ImageController::class, 'uploadImage']);
-            $group->put('/image/{id}', [ImageController::class, 'updateImageName']);
-            $group->delete('/image', [ImageController::class, 'deleteImages']);
-            $group->get('/storage', [ImageController::class, 'getStorageUsed']);
+            $group->put('/image/{id}', [ImageController::class, 'updateImage']);
+            $group->delete('/image', [ImageController::class, 'deleteImage']);
         })->add(new AuthMiddleware());
     }
 }

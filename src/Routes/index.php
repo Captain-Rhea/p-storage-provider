@@ -5,8 +5,10 @@ use App\Helpers\ResponseHandle;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 
-use App\Routes\ImageRoute;
 use App\Routes\ConnectionRoute;
+use App\Routes\FolderRoute;
+use App\Routes\FileRoute;
+use App\Routes\ImageRoute;
 
 return function (App $app) {
     $app->get('/', function (Request $request, Response $response) {
@@ -16,6 +18,8 @@ return function (App $app) {
         return ResponseHandle::success($response, $data, 'Storage Provider - API Services');
     });
 
+    (new FolderRoute($app))->register();
+    (new FileRoute($app))->register();
     (new ImageRoute($app))->register();
 
     $connectionRouteEnabled = filter_var($_ENV['CONNECTION_ROUTE'] ?? false, FILTER_VALIDATE_BOOLEAN);
