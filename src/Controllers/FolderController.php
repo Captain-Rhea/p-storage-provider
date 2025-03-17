@@ -22,7 +22,7 @@ class FolderController
     }
 
     // POST /api/v1/folder
-    public function uploadFolder(Request $request, Response $response): Response
+    public function createFolder(Request $request, Response $response): Response
     {
         try {
             $data = $request->getParsedBody();
