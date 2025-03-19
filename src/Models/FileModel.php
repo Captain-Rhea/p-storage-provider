@@ -7,14 +7,16 @@ use Illuminate\Support\Carbon;
 
 class FileModel extends Model
 {
-    protected $table = 'files';
+    protected $table = 'tb_files';
     protected $primaryKey = 'id';
     public $timestamps = true;
 
     protected $fillable = [
-        'folder_id',
+        'group',
         'file_name',
+        'file_description',
         'file_path',
+        'file_url',
         'file_size',
         'file_type',
         'created_by',
@@ -33,10 +35,5 @@ class FileModel extends Model
         static::updating(function ($model) {
             $model->updated_at = Carbon::now('Asia/Bangkok');
         });
-    }
-
-    public function folder()
-    {
-        return $this->belongsTo(FolderModel::class, 'folder_id');
     }
 }

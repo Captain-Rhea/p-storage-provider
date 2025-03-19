@@ -1,11 +1,11 @@
 <?php
 
 use Dotenv\Dotenv;
-use Slim\Factory\AppFactory;
 use App\Database\Connection;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Psr\Http\Server\RequestHandlerInterface as RequestHandler;
 use Psr\Http\Message\ResponseInterface as Response;
+use Slim\Factory\AppFactory;
 
 require __DIR__ . '/../vendor/autoload.php';
 

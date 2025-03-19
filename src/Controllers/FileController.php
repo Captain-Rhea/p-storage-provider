@@ -6,80 +6,115 @@ use Exception;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use App\Helpers\ResponseHandle;
-use Illuminate\Support\Carbon;
-use App\Helpers\ImageProcessor;
-use App\Models\Image;
+use App\Models\FileModel;
+use App\Models\FileTypeConfigModel;
 
 class FileController
 {
-    // GET /api/v1/file
-    public function getFileList(Request $request, Response $response): Response
+    // GET /api/v1/files
+    public function getAll(Request $request, Response $response): Response
     {
         try {
             $page = (int)($request->getQueryParams()['page'] ?? 1);
             $limit = (int)($request->getQueryParams()['per_page'] ?? 10);
-            $imageId = $request->getQueryParams()['image_id'] ?? null;
             $group = $request->getQueryParams()['group'] ?? null;
-            $name = $request->getQueryParams()['name'] ?? null;
+            $fileType = $request->getQueryParams()['file_type'] ?? null;
+            $createdBy = $request->getQueryParams()['created_by'] ?? null;
             $startDate = $request->getQueryParams()['start_date'] ?? null;
             $endDate = $request->getQueryParams()['end_date'] ?? null;
 
-            $query = Image::orderBy('image_id', 'desc');
-
-            if ($imageId) {
-                $query->where('image_id', $imageId);
-            }
+            $query = FileModel::query();
 
             if ($group) {
                 $query->where('group', $group);
             }
 
-            if ($name) {
-                $query->where('name', 'like', '%' . $name . '%');
+            if ($fileType) {
+                $query->where('file_type', $fileType);
+            }
+
+            if ($createdBy) {
+                $query->where('created_by', $createdBy);
             }
 
             if ($startDate) {
-                $query->whereDate('uploaded_at', '>=', $startDate);
+                $query->whereDate('created_at', '>=', $startDate);
             }
+
             if ($endDate) {
-                $query->whereDate('uploaded_at', '<=', $endDate);
+                $query->whereDate('created_at', '<=', $endDate);
             }
 
-            $images = $query->paginate($limit, ['*'], 'page', $page);
+            if ($request->getQueryParams()['search'] ?? null) {
+                $search = $request->getQueryParams()['search'];
+                $query->where('file_name', 'LIKE', '%' . $search . '%')
+                    ->orWhere('file_description', 'LIKE', '%' . $search . '%');
+            }
 
-            $transformedData = $images->map(function ($image) {
+            $files = $query->orderBy('updated_at', 'desc')->paginate($limit, ['*'], 'page', $page);
+
+            $transformedData = $files->map(function ($file) {
                 return [
-                    'image_id' => $image->image_id,
-                    'group' => $image->group,
-                    'name' => $image->name,
-                    'base_url' => $image->base_url,
-                    'lazy_url' => $image->lazy_url,
-                    'base_size' => $image->base_size,
-                    'lazy_size' => $image->lazy_size,
-                    'uploaded_by' => $image->uploaded_by,
-                    'uploaded_at' => $image->uploaded_at->toDateTimeString(),
-                    'updated_at' => $image->updated_at->toDateTimeString()
+                    'id' => $file->id,
+                    'group' => $file->group,
+                    'file_name' => $file->file_name,
+                    'file_description' => $file->file_description,
+                    'file_url' => $file->file_url,
+                    'file_size' => $file->file_size,
+                    'file_type' => $file->file_type,
+                    'created_by' => $file->created_by,
+                    'created_at' => $file->created_at->toDateTimeString(),
+                    'updated_by' => $file->updated_by,
+                    'updated_at' => $file->updated_at->toDateTimeString(),
                 ];
             });
 
             $data = [
                 'pagination' => [
-                    'current_page' => $images->currentPage(),
-                    'per_page' => $images->perPage(),
-                    'total' => $images->total(),
-                    'last_page' => $images->lastPage(),
+                    'current_page' => $files->currentPage(),
+                    'per_page' => $files->perPage(),
+                    'total' => $files->total(),
+                    'last_page' => $files->lastPage(),
                 ],
                 'data' => $transformedData
             ];
 
-            return ResponseHandle::success($response, $data, 'Image list retrieved successfully');
+            return ResponseHandle::success($response, $data, 'File list retrieved successfully');
         } catch (Exception $e) {
             return ResponseHandle::error($response, $e->getMessage(), 500);
         }
     }
 
-    // POST /api/v1/file
-    public function uploadFile(Request $request, Response $response): Response
+    // GET /api/v1/files/{id}
+    public function getOne(Request $request, Response $response, array $args): Response
+    {
+        try {
+            $file = FileModel::find($args['id']);
+
+            if (!$file) {
+                return ResponseHandle::error($response, "File with ID {$args['id']} not found", 404);
+            }
+
+            $data = [
+                'id' => $file->id,
+                'group' => $file->group,
+                'file_name' => $file->file_name,
+                'file_description' => $file->file_description,
+                'file_url' => $file->file_url,
+                'file_size' => $file->file_size,
+                'file_type' => $file->file_type,
+                'created_at' => $file->created_at->toDateTimeString(),
+                'updated_at' => $file->updated_at->toDateTimeString(),
+            ];
+
+            return ResponseHandle::success($response, $data, 'File retrieved successfully');
+        } catch (Exception $e) {
+            return ResponseHandle::error($response, $e->getMessage(), 500);
+        }
+    }
+
+    // POST /api/v1/files
+    public function upload(Request $request, Response $response): Response
     {
         try {
             $uploadedFiles = $request->getUploadedFiles();
@@ -95,170 +130,106 @@ class FileController
                 return ResponseHandle::error($response, 'Upload failed', 400);
             }
 
+            $fileNameWithExt = $file->getClientFilename();
+            $fileName = pathinfo($fileNameWithExt, PATHINFO_FILENAME);
+            $fileExtension = pathinfo($fileNameWithExt, PATHINFO_EXTENSION);
+
             $fileType = $file->getClientMediaType();
-            if (!in_array($fileType, ['image/jpeg', 'image/png', 'image/webp'])) {
-                return ResponseHandle::error($response, 'Uploaded file is not a valid image', 400);
+
+            $safeFileTypes = FileTypeConfigModel::getAll();
+
+            $safeFileTypes = array_column($safeFileTypes, 'mime_type');
+
+            if (!in_array($fileType, $safeFileTypes)) {
+                return ResponseHandle::error($response, 'Uploaded file is not a safe file type', 400);
             }
 
-            $tempPath = $file->getStream()->getMetadata('uri');
-            $imageSize = getimagesize($tempPath);
-            if ($imageSize === false) {
-                return ResponseHandle::error($response, 'Uploaded file is not a valid image', 400);
-            }
-
-            [$width, $height] = $imageSize;
-            if ($width > 1920 || $height > 1920) {
-                return ResponseHandle::error($response, 'Image dimensions exceed the maximum allowed size of 1920x1920 pixels', 400);
-            }
-
-            $year = Carbon::now('Asia/Bangkok')->year;
-            $month = Carbon::now('Asia/Bangkok')->format('m');
-            $uploadDir = __DIR__ . "/../../public/uploads/$year/$month";
+            $uploadDir = __DIR__ . "/../../public/storage";
 
             if (!is_dir($uploadDir) && !mkdir($uploadDir, 0755, true) && !is_dir($uploadDir)) {
                 throw new Exception('Failed to create upload directory');
             }
 
-            $tempPath = $file->getStream()->getMetadata('uri');
+            $uniqueFileName = uniqid($fileName . '_') . '.' . $fileExtension;
+            $filePath = "$uploadDir/$uniqueFileName";
 
-            $baseImage = new ImageProcessor();
-            $baseImage->loadImage($tempPath);
+            $file->moveTo($filePath);
 
-            $baseImageName = uniqid('base') . '.webp';
-            $basePath = "$uploadDir/$baseImageName";
-            $baseImage->saveAsWebP($basePath, 90);
-            $baseSize = filesize($basePath);
+            $fileUrl = $_ENV['FILE_BASE_DOMAIN'] . "/storage/$uniqueFileName";
 
-            $lazyImage = new ImageProcessor();
-            $lazyImage->loadImage($tempPath);
-            $lazyImage->resizeByWidth(300);
-
-            $lazyImageName = uniqid('lazy') . '.webp';
-            $lazyPath = "$uploadDir/$lazyImageName";
-            $lazyImage->saveAsWebP($lazyPath, 90);
-            $lazySize = filesize($lazyPath);
-
-            $baseUrl = $_ENV['FILE_BASE_DOMAIN'] . "/uploads/$year/$month/$baseImageName";
-            $lazyUrl = $_ENV['FILE_BASE_DOMAIN'] . "/uploads/$year/$month/$lazyImageName";
-
-            $originalName = pathinfo($file->getClientFilename(), PATHINFO_FILENAME);
             $group = $parsedBody['group'] ?? 'default';
-            $uploadedBy = isset($parsedBody['uploaded_by']) ? (int)$parsedBody['uploaded_by'] : 1;
+            $createdBy = isset($parsedBody['created_by']) ? $parsedBody['created_by'] : 'system';
 
-            $imageModel = Image::create([
+            $fileModel = FileModel::create([
                 'group' => $group,
-                'name' => $originalName,
-                'path' => "$year/$month",
-                'base_url' => $baseUrl,
-                'lazy_url' => $lazyUrl,
-                'base_size' => $baseSize,
-                'lazy_size' => $lazySize,
-                'uploaded_by' => $uploadedBy
+                'file_name' => $fileName,
+                'file_description' => $parsedBody['file_description'] ?? null,
+                'file_path' => $uniqueFileName,
+                'file_url' => $fileUrl,
+                'file_size' => filesize($filePath),
+                'file_type' => $fileType,
+                'created_by' => $createdBy
             ]);
 
-            $transformedImageModel = [
-                'image_id' => $imageModel->image_id,
-                'group' => $imageModel->group,
-                'name' => $imageModel->name,
-                'base_url' => $imageModel->base_url,
-                'lazy_url' => $imageModel->lazy_url,
-                'base_size' => $imageModel->base_size,
-                'lazy_size' => $imageModel->lazy_size,
-                'uploaded_at' => $imageModel->uploaded_at->toDateTimeString(),
-                'uploaded_by' => $imageModel->uploaded_by
+            $transformedFileModel = [
+                'id' => $fileModel->id,
+                'group' => $fileModel->group,
+                'file_name' => $fileModel->file_name,
+                'file_description' => $fileModel->file_description,
+                'file_url' => $fileModel->file_url,
+                'file_size' => $fileModel->file_size,
+                'file_type' => $fileModel->file_type,
+                'created_by' => $fileModel->created_by,
+                'created_at' => $fileModel->created_at->toDateTimeString(),
             ];
 
-            return ResponseHandle::success($response, $transformedImageModel, 'Image uploaded successfully', 201);
+            return ResponseHandle::success($response, $transformedFileModel, 'File uploaded successfully', 201);
         } catch (Exception $e) {
             return ResponseHandle::error($response, $e->getMessage(), 500);
         }
     }
 
-    // PUT /api/v1/file
-    public function updateFile(Request $request, Response $response, array $args): Response
+    // PATCH /api/v1/files/{id}
+    public function update(Request $request, Response $response, array $args): Response
     {
         try {
-            $id = $args['id'];
-            $image = Image::find($id);
+            $file = FileModel::find($args['id']);
 
-            if (!$image) {
-                return ResponseHandle::error($response, "Image with ID $id not found", 404);
+            if (!$file) {
+                return ResponseHandle::error($response, "File with ID {$args['id']} not found", 404);
             }
 
-            $body = json_decode((string)$request->getBody());
-            $newName = $body->new_name ?? null;
+            $jsonBody = json_decode((string)$request->getBody(), true);
+            $file->file_name = $jsonBody['file_name'] ?? $file->file_name;
+            $file->file_description = $jsonBody['file_description'] ?? $file->file_description;
+            $file->updated_by = $jsonBody['updated_by'] ?? $file->updated_by;
+            $file->save();
 
-            if (empty($newName)) {
-                return ResponseHandle::error($response, "New name is required", 400);
-            }
-
-            $image->name = $newName;
-            $image->save();
-
-            $updatedImage = [
-                'image_id' => $image->image_id,
-                'name' => $image->name,
-                'updated_at' => $image->updated_at->toDateTimeString()
-            ];
-
-            return ResponseHandle::success($response, $updatedImage, "Image name updated successfully");
+            return ResponseHandle::success($response, $file, 'File updated successfully');
         } catch (Exception $e) {
             return ResponseHandle::error($response, $e->getMessage(), 500);
         }
     }
 
-    // DELETE /api/v1/file
-    public function deleteFile(Request $request, Response $response): Response
+    // DELETE /api/v1/files/{id}
+    public function delete(Request $request, Response $response, array $args): Response
     {
         try {
-            $queryParams = $request->getQueryParams();
-            $ids = $queryParams['ids'] ?? null;
+            $file = FileModel::find($args['id']);
 
-            if (empty($ids)) {
-                return ResponseHandle::error($response, "Image IDs are required", 400);
+            if (!$file) {
+                return ResponseHandle::error($response, "File with ID {$args['id']} not found", 404);
             }
 
-            $imageIds = explode(',', $ids);
+            $filePath = __DIR__ . "/../../public/storage/" . $file->file_path;
 
-            $images = Image::whereIn('image_id', $imageIds)->get();
-
-            if ($images->isEmpty()) {
-                return ResponseHandle::error($response, "No images found for the provided IDs", 404);
+            if (file_exists($filePath) && !unlink($filePath)) {
+                throw new Exception("Failed to delete file");
             }
 
-            $errors = [];
-            foreach ($images as $image) {
-                try {
-                    $filePath = __DIR__ . "/../../public/uploads/" . $image->path . '/' . basename($image->base_url);
-                    $thumbnailPath = __DIR__ . "/../../public/uploads/" . $image->path . '/' . basename($image->lazy_url);
+            $file->delete();
 
-                    if (file_exists($filePath) && !unlink($filePath)) {
-                        throw new Exception("Failed to delete base image file for ID {$image->id}");
-                    }
-
-                    if (file_exists($thumbnailPath) && !unlink($thumbnailPath)) {
-                        throw new Exception("Failed to delete lazy image file for ID {$image->id}");
-                    }
-
-                    $image->delete();
-                } catch (Exception $e) {
-                    $errors[] = [
-                        'image_id' => $image->id,
-                        'error' => $e->getMessage(),
-                    ];
-                }
-            }
-
-            if (!empty($errors)) {
-                return ResponseHandle::success($response, [
-                    'deleted' => $images->count() - count($errors),
-                    'errors' => $errors,
-                ], "Some images could not be deleted");
-            }
-
-            return ResponseHandle::success($response, [
-                'deleted' => $images->count(),
-            ], "All images deleted successfully");
+            return ResponseHandle::success($response, null, 'File deleted successfully');
         } catch (Exception $e) {
             return ResponseHandle::error($response, $e->getMessage(), 500);
         }

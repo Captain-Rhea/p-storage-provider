@@ -10,10 +10,11 @@ class FileRoute extends BaseRoute
     public function register(): void
     {
         $this->app->group('/api/v1', function ($group) {
-            $group->get('/file', [FileController::class, 'getFileList']);
-            $group->post('/file', [FileController::class, 'uploadFile']);
-            $group->put('/file/{id}', [FileController::class, 'updateFile']);
-            $group->delete('/file', [FileController::class, 'deleteFile']);
+            $group->get('/files', [FileController::class, 'getAll']);
+            $group->get('/files/{id}', [FileController::class, 'getOne']);
+            $group->post('/files', [FileController::class, 'upload']);
+            $group->patch('/files/{id}', [FileController::class, 'update']);
+            $group->delete('/files/{id}', [FileController::class, 'delete']);
         })->add(new AuthMiddleware());
     }
 }

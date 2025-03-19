@@ -5,18 +5,17 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 
-class FolderModel extends Model
+class FileTypeConfigModel extends Model
 {
-    protected $table = 'folder';
+
+    protected $table = 'tb_files_type_config';
     protected $primaryKey = 'id';
     public $timestamps = true;
 
     protected $fillable = [
-        'name',
-        'parent_id',
-        'path',
-        'created_by',
-        'updated_by',
+        'file_type',
+        'mime_type',
+        'description'
     ];
 
     protected static function boot()
@@ -33,18 +32,8 @@ class FolderModel extends Model
         });
     }
 
-    public function parent()
+    public static function getAll(): array
     {
-        return $this->belongsTo(FolderModel::class, 'parent_id');
-    }
-
-    public function children()
-    {
-        return $this->hasMany(FolderModel::class, 'parent_id');
-    }
-
-    public function files()
-    {
-        return $this->hasMany(FileModel::class, 'folder_id');
+        return self::where('is_active', 1)->get()->toArray();
     }
 }
