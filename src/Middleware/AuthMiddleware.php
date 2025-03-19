@@ -15,24 +15,32 @@ class AuthMiddleware implements MiddlewareInterface
     {
         $authHeader = $request->getHeaderLine('Authorization');
 
-        if (empty($authHeader)) {
-            return $this->unauthorizedResponse('Authorization header missing');
+        if (empty($authHeader) || !str_starts_with($authHeader, 'Bearer ')) {
+            return $this->unauthorizedResponse('Invalid or missing Authorization header');
         }
 
-        $token = str_replace('Bearer ', '', $authHeader);
-        $token = explode('.', $token);
-        $connectionName = $token[0];
-        $secretKey = $token[1];
+        $tokenParts = explode('.', trim(str_replace('Bearer ', '', $authHeader)));
+
+        if (count($tokenParts) < 2) {
+            return $this->unauthorizedResponse('Invalid token format');
+        }
+
+        [$connectionName, $secretKey] = $tokenParts;
+
         $existingConnection = ApiConnectionModel::where('connection_name', $connectionName)->first();
+
+        if (!$existingConnection) {
+            return $this->unauthorizedResponse('Connection not found');
+        }
+
         $token = $existingConnection->connection_key . '.' . $secretKey;
 
         try {
             $decoded = TokenUtils::decodeToken($token);
             $request = $request->withAttribute('service_detail', (array) $decoded);
-            $request->getAttribute('service_detail');
             return $handler->handle($request);
         } catch (\Exception $e) {
-            return $this->unauthorizedResponse($e->getMessage());
+            return $this->unauthorizedResponse('Token validation failed: ' . $e->getMessage());
         }
     }
 

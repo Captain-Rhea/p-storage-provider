@@ -17,19 +17,16 @@ class FileModel extends Model
         'file_path',
         'file_size',
         'file_type',
-        'uploaded_by',
+        'created_by',
         'updated_by',
     ];
-
-    const CREATED_AT = 'uploaded_at';
-    const UPDATED_AT = 'updated_at';
 
     protected static function boot()
     {
         parent::boot();
 
         static::creating(function ($model) {
-            $model->uploaded_at = Carbon::now('Asia/Bangkok');
+            $model->created_at = Carbon::now('Asia/Bangkok');
             $model->updated_at = Carbon::now('Asia/Bangkok');
         });
 

@@ -24,6 +24,7 @@
     "illuminate/events": "^11.36",
     "illuminate/support": "^11.37",
     "guzzlehttp/guzzle": "^7.9",
-    "firebase/php-jwt": "^6.10"
+    "firebase/php-jwt": "^6.10",
+    "respect/validation": "^2.4"
   }
 }

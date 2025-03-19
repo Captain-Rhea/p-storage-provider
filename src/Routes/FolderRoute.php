@@ -10,10 +10,11 @@ class FolderRoute extends BaseRoute
     public function register(): void
     {
         $this->app->group('/api/v1', function ($group) {
-            $group->get('/folder', [FolderController::class, 'getFolderList']);
-            $group->post('/folder', [FolderController::class, 'createFolder']);
-            $group->put('/folder/{id}', [FolderController::class, 'updateFolder']);
-            $group->delete('/folder/{id}', [FolderController::class, 'deleteFolder']);
+            $group->get('/folder', [FolderController::class, 'getAll']);
+            $group->get('/folder/{id}', [FolderController::class, 'getOne']);
+            $group->post('/folder', [FolderController::class, 'create']);
+            $group->put('/folder/{id}', [FolderController::class, 'update']);
+            $group->delete('/folder/{id}', [FolderController::class, 'delete']);
         })->add(new AuthMiddleware());
     }
 }

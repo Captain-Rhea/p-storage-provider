@@ -11,75 +11,106 @@ use App\Models\FolderModel;
 class FolderController
 {
     // GET /api/v1/folder
-    public function getFolderList(Request $request, Response $response): Response
+    public function getAll(Request $request, Response $response): Response
     {
         try {
-            $folders = FolderModel::all();
+            $folders = FolderModel::with('children')->where('parent_id', 0)->get();
             return ResponseHandle::success($response, $folders, 'Data list retrieved successfully');
         } catch (Exception $e) {
-            return ResponseHandle::error($response, $e->getMessage(), 500);
+            return ResponseHandle::error($response, 'Failed to retrieve folders: ' . $e->getMessage());
+        }
+    }
+
+    // GET /api/v1/folder/{id}
+    public function getOne(Request $request, Response $response, array $args): Response
+    {
+        try {
+            $folder = FolderModel::with(['files', 'children'])->findOrFail($args['id']);
+            return ResponseHandle::success($response, $folder, 'Data retrieved successfully');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return ResponseHandle::error($response, 'Folder not found', 404);
+        } catch (Exception $e) {
+            return ResponseHandle::error($response, 'Failed to retrieve folder: ' . $e->getMessage());
         }
     }
 
     // POST /api/v1/folder
-    public function createFolder(Request $request, Response $response): Response
+    public function create(Request $request, Response $response): Response
     {
         try {
             $data = $request->getParsedBody();
+            $user = $request->getAttribute('service_detail')['sub'] ?? 'system';
 
-            $folder = new FolderModel();
-            $folder->name = $data['name'] ?? null;
-            $folder->parent_id = $data['parent_id'] ?? 0;
-            $folder->path = $data['path'] ?? null;
-            $folder->created_by = $data['created_by'] ?? 'system';
-            $folder->updated_by = $data['created_by'] ?? 'system';
-            $folder->save();
+            // Manual validation
+            if (empty($data['name']) || !is_string($data['name'])) {
+                return ResponseHandle::error($response, 'Name is required and must be a string', 400);
+            }
+            if (isset($data['parent_id']) && (!is_int($data['parent_id']) || $data['parent_id'] < 0)) {
+                return ResponseHandle::error($response, 'Parent ID must be a non-negative integer', 400);
+            }
+            if (isset($data['path']) && !is_string($data['path'])) {
+                return ResponseHandle::error($response, 'Path must be a string', 400);
+            }
+
+            $folder = FolderModel::create([
+                'name' => $data['name'],
+                'parent_id' => $data['parent_id'] ?? 0,
+                'path' => $data['path'] ?? null,
+                'created_by' => $user,
+                'updated_by' => $user,
+            ]);
 
             return ResponseHandle::success($response, $folder, 'Folder created successfully', 201);
         } catch (Exception $e) {
-            return ResponseHandle::error($response, $e->getMessage(), 500);
+            return ResponseHandle::error($response, 'Failed to create folder: ' . $e->getMessage());
         }
     }
 
     // PUT /api/v1/folder/{id}
-    public function updateFolder(Request $request, Response $response, array $args): Response
+    public function update(Request $request, Response $response, array $args): Response
     {
         try {
-            $id = $args['id'];
             $data = $request->getParsedBody();
+            $user = $request->getAttribute('service_detail')['sub'] ?? 'system';
 
-            $folder = FolderModel::find($id);
-            if (!$folder) {
-                return ResponseHandle::error($response, 'Folder not found', 404);
+            // Manual validation (optional fields)
+            if (isset($data['name']) && (empty($data['name']) || !is_string($data['name']))) {
+                return ResponseHandle::error($response, 'Name must be a non-empty string', 400);
+            }
+            if (isset($data['parent_id']) && (!is_int($data['parent_id']) || $data['parent_id'] < 0)) {
+                return ResponseHandle::error($response, 'Parent ID must be a non-negative integer', 400);
+            }
+            if (isset($data['path']) && !is_string($data['path'])) {
+                return ResponseHandle::error($response, 'Path must be a string', 400);
             }
 
-            $folder->name = $data['name'] ?? $folder->name;
-            $folder->parent_id = $data['parent_id'] ?? $folder->parent_id;
-            $folder->path = $data['path'] ?? $folder->path;
-            $folder->updated_by = $data['updated_by'] ?? 'system';
-            $folder->save();
+            $folder = FolderModel::findOrFail($args['id']);
+            $folder->update([
+                'name' => $data['name'] ?? $folder->name,
+                'parent_id' => $data['parent_id'] ?? $folder->parent_id,
+                'path' => $data['path'] ?? $folder->path,
+                'updated_by' => $user,
+            ]);
 
-            return ResponseHandle::success($response, $folder, "Folder updated successfully");
+            return ResponseHandle::success($response, $folder, 'Folder updated successfully');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return ResponseHandle::error($response, 'Folder not found', 404);
         } catch (Exception $e) {
-            return ResponseHandle::error($response, $e->getMessage(), 500);
+            return ResponseHandle::error($response, 'Failed to update folder: ' . $e->getMessage());
         }
     }
 
     // DELETE /api/v1/folder/{id}
-    public function deleteFolder(Request $request, Response $response, array $args): Response
+    public function delete(Request $request, Response $response, array $args): Response
     {
         try {
-            $id = $args['id'];
-
-            $folder = FolderModel::find($id);
-            if (!$folder) {
-                return ResponseHandle::error($response, 'Folder not found', 404);
-            }
-
+            $folder = FolderModel::findOrFail($args['id']);
             $folder->delete();
-            return ResponseHandle::success($response, null, "Folder deleted successfully");
+            return ResponseHandle::success($response, [], 'Folder deleted successfully');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return ResponseHandle::error($response, 'Folder not found', 404);
         } catch (Exception $e) {
-            return ResponseHandle::error($response, $e->getMessage(), 500);
+            return ResponseHandle::error($response, 'Failed to delete folder: ' . $e->getMessage());
         }
     }
 }

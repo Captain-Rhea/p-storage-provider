@@ -29,25 +29,6 @@ final class CreateStorageTable extends AbstractMigration
             ->addIndex(['parent_id'], ['name' => 'idx_parent_id'])
             ->create();
 
-        // สร้างตาราง images
-        $table = $this->table('images', ['id' => 'id']);
-        $table->addColumn('folder_id', 'integer', ['null' => true, 'signed' => false])
-            ->addColumn('image_name', 'string', ['limit' => 255, 'null' => false])
-            ->addColumn('image_path', 'string', ['limit' => 512, 'null' => false])
-            ->addColumn('image_url', 'text', ['null' => true])
-            ->addColumn('image_size', 'integer', ['null' => true, 'signed' => false])
-            ->addColumn('image_type', 'string', ['limit' => 50, 'null' => true])
-            ->addColumn('width', 'integer', ['null' => true])
-            ->addColumn('height', 'integer', ['null' => true])
-            ->addColumn('uploaded_by', 'string', ['limit' => 100, 'null' => true])
-            ->addColumn('uploaded_at', 'timestamp', ['default' => 'CURRENT_TIMESTAMP', 'null' => false])
-            ->addColumn('updated_by', 'string', ['limit' => 100, 'null' => true])
-            ->addColumn('updated_at', 'timestamp', ['default' => 'CURRENT_TIMESTAMP', 'update' => 'CURRENT_TIMESTAMP', 'null' => false])
-            ->addIndex(['folder_id'], ['name' => 'idx_folder_id'])
-            ->addIndex(['uploaded_by'], ['name' => 'idx_uploaded_by'])
-            ->addForeignKey('folder_id', 'folder', 'id', ['delete' => 'SET_NULL', 'update' => 'CASCADE'])
-            ->create();
-
         // สร้างตาราง files
         $table = $this->table('files', ['id' => 'id']);
         $table->addColumn('folder_id', 'integer', ['null' => true, 'signed' => false])
@@ -55,8 +36,8 @@ final class CreateStorageTable extends AbstractMigration
             ->addColumn('file_path', 'string', ['limit' => 512, 'null' => false])
             ->addColumn('file_size', 'integer', ['null' => true, 'signed' => false])
             ->addColumn('file_type', 'string', ['limit' => 50, 'null' => true])
-            ->addColumn('uploaded_by', 'string', ['limit' => 100, 'null' => true])
-            ->addColumn('uploaded_at', 'timestamp', ['default' => 'CURRENT_TIMESTAMP', 'null' => false])
+            ->addColumn('created_by', 'string', ['limit' => 100, 'null' => true])
+            ->addColumn('created_at', 'timestamp', ['default' => 'CURRENT_TIMESTAMP', 'null' => false])
             ->addColumn('updated_by', 'string', ['limit' => 100, 'null' => true])
             ->addColumn('updated_at', 'timestamp', ['default' => 'CURRENT_TIMESTAMP', 'update' => 'CURRENT_TIMESTAMP', 'null' => false]) // เวลาอัปเดต
             ->addIndex(['folder_id'], ['name' => 'idx_folder_id'])

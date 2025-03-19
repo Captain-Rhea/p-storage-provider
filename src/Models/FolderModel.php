@@ -19,9 +19,6 @@ class FolderModel extends Model
         'updated_by',
     ];
 
-    const CREATED_AT = 'created_at';
-    const UPDATED_AT = 'updated_at';
-
     protected static function boot()
     {
         parent::boot();
@@ -36,9 +33,14 @@ class FolderModel extends Model
         });
     }
 
-    public function images()
+    public function parent()
     {
-        return $this->hasMany(ImageModel::class, 'folder_id');
+        return $this->belongsTo(FolderModel::class, 'parent_id');
+    }
+
+    public function children()
+    {
+        return $this->hasMany(FolderModel::class, 'parent_id');
     }
 
     public function files()
