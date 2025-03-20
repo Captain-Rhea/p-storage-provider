@@ -130,60 +130,63 @@ class FileController
                 return ResponseHandle::error($response, 'Upload failed', 400);
             }
 
-            $fileNameWithExt = $file->getClientFilename();
-            $fileName = pathinfo($fileNameWithExt, PATHINFO_FILENAME);
-            $fileExtension = pathinfo($fileNameWithExt, PATHINFO_EXTENSION);
+            $fileSize = $file->getSize();
+
+            $storageLimitGB = (float) ($_ENV['STORAGE_LIMIT_GB'] ?? 10);
+            $storageLimitBytes = $storageLimitGB * 1024 * 1024 * 1024;
+            $usedBytes = $this->getFolderSize(__DIR__ . "/../../public/storage");
+            $remainingBytes = $storageLimitBytes - $usedBytes;
+
+            if ($fileSize > $remainingBytes) {
+                return ResponseHandle::error($response, 'Not enough storage space', 400, [
+                    'file_size' => $this->formatBytes($fileSize),
+                    'remaining_space' => $this->formatBytes($remainingBytes)
+                ]);
+            }
 
             $fileType = $file->getClientMediaType();
-
-            $safeFileTypes = FileTypeConfigModel::getAll();
-
-            $safeFileTypes = array_column($safeFileTypes, 'mime_type');
+            $safeFileTypes = array_column(FileTypeConfigModel::getAll(), 'mime_type');
 
             if (!in_array($fileType, $safeFileTypes)) {
                 return ResponseHandle::error($response, 'Uploaded file is not a safe file type', 400);
             }
 
-            $uploadDir = __DIR__ . "/../../public/storage";
+            $uploadBaseDir = __DIR__ . "/../../public/storage";
+            $year = date('Y');
+            $month = date('n');
+            $uploadDir = "$uploadBaseDir/$year/$month";
 
             if (!is_dir($uploadDir) && !mkdir($uploadDir, 0755, true) && !is_dir($uploadDir)) {
                 throw new Exception('Failed to create upload directory');
             }
 
-            $uniqueFileName = uniqid($fileName . '_') . '.' . $fileExtension;
+            $fileExtension = pathinfo($file->getClientFilename(), PATHINFO_EXTENSION);
+            $uniqueFileName = $this->generateUniqueFileName($fileExtension);
             $filePath = "$uploadDir/$uniqueFileName";
 
             $file->moveTo($filePath);
 
-            $fileUrl = $_ENV['FILE_BASE_DOMAIN'] . "/storage/$uniqueFileName";
-
-            $group = $parsedBody['group'] ?? 'default';
-            $createdBy = isset($parsedBody['created_by']) ? $parsedBody['created_by'] : 'system';
+            $fileUrl = $_ENV['FILE_BASE_DOMAIN'] . "/storage/$year/$month/$uniqueFileName";
 
             $fileModel = FileModel::create([
-                'group' => $group,
-                'file_name' => $fileName,
+                'group' => $parsedBody['group'] ?? 'default',
+                'file_name' => pathinfo($file->getClientFilename(), PATHINFO_FILENAME),
                 'file_description' => $parsedBody['file_description'] ?? null,
-                'file_path' => $uniqueFileName,
+                'file_path' => $filePath,
                 'file_url' => $fileUrl,
-                'file_size' => filesize($filePath),
+                'file_size' => $fileSize,
                 'file_type' => $fileType,
-                'created_by' => $createdBy
+                'created_by' => $parsedBody['created_by'] ?? 'system'
             ]);
 
-            $transformedFileModel = [
+            return ResponseHandle::success($response, [
                 'id' => $fileModel->id,
-                'group' => $fileModel->group,
                 'file_name' => $fileModel->file_name,
-                'file_description' => $fileModel->file_description,
                 'file_url' => $fileModel->file_url,
-                'file_size' => $fileModel->file_size,
+                'file_size' => $this->formatBytes($fileModel->file_size),
                 'file_type' => $fileModel->file_type,
-                'created_by' => $fileModel->created_by,
-                'created_at' => $fileModel->created_at->toDateTimeString(),
-            ];
-
-            return ResponseHandle::success($response, $transformedFileModel, 'File uploaded successfully', 201);
+                'remaining_space' => $this->formatBytes($remainingBytes - $fileSize),
+            ], 'File uploaded successfully', 201);
         } catch (Exception $e) {
             return ResponseHandle::error($response, $e->getMessage(), 500);
         }
@@ -221,17 +224,54 @@ class FileController
                 return ResponseHandle::error($response, "File with ID {$args['id']} not found", 404);
             }
 
-            $filePath = __DIR__ . "/../../public/storage/" . $file->file_path;
+            $filePath = "{$file->file_path}";
 
-            if (file_exists($filePath) && !unlink($filePath)) {
-                throw new Exception("Failed to delete file");
+            if (file_exists($filePath)) {
+                if (!unlink($filePath)) {
+                    return ResponseHandle::error($response, "Failed to delete file", 500);
+                }
             }
+
+            $this->cleanupEmptyDirs(dirname($filePath));
 
             $file->delete();
 
             return ResponseHandle::success($response, null, 'File deleted successfully');
         } catch (Exception $e) {
             return ResponseHandle::error($response, $e->getMessage(), 500);
+        }
+    }
+
+    private function getFolderSize(string $folder): int
+    {
+        $size = 0;
+        if (!is_dir($folder)) {
+            return $size;
+        }
+
+        foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($folder, \FilesystemIterator::SKIP_DOTS)) as $file) {
+            $size += $file->getSize();
+        }
+        return $size;
+    }
+
+    private function formatBytes(int $bytes, int $precision = 2): string
+    {
+        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        $factor = floor((strlen((string)$bytes) - 1) / 3);
+        return sprintf("%.{$precision}f", $bytes / pow(1024, $factor)) . ' ' . $units[$factor];
+    }
+
+    private function generateUniqueFileName(string $extension): string
+    {
+        return uniqid(bin2hex(random_bytes(4)), true) . '.' . $extension;
+    }
+
+    private function cleanupEmptyDirs(string $dir): void
+    {
+        while (is_dir($dir) && count(scandir($dir)) === 2) {
+            rmdir($dir);
+            $dir = dirname($dir);
         }
     }
 }

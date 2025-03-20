@@ -8,6 +8,7 @@ use Psr\Http\Message\ServerRequestInterface as Request;
 use App\Routes\ConnectionRoute;
 use App\Routes\FileRoute;
 use App\Routes\FileTypeConfigRoute;
+use App\Routes\StorageRoute;
 
 return function (App $app) {
     $app->get('/', function (Request $request, Response $response) {
@@ -19,6 +20,7 @@ return function (App $app) {
 
     (new FileRoute($app))->register();
     (new FileTypeConfigRoute($app))->register();
+    (new StorageRoute($app))->register();
 
     $connectionRouteEnabled = filter_var($_ENV['CONNECTION_ROUTE'] ?? false, FILTER_VALIDATE_BOOLEAN);
     if ($connectionRouteEnabled) {
