@@ -8,6 +8,7 @@ use Psr\Http\Message\ServerRequestInterface as Request;
 use App\Helpers\ResponseHandle;
 use App\Models\FileModel;
 use App\Models\FileTypeConfigModel;
+use Illuminate\Database\Capsule\Manager as DB;
 
 class FileController
 {
@@ -59,7 +60,7 @@ class FileController
                     'group' => $file->group,
                     'file_name' => $file->file_name,
                     'file_description' => $file->file_description,
-                    'file_url' => $file->file_url,
+                    'file_url' => $_ENV['FILE_BASE_DOMAIN'] . $file->file_url,
                     'file_size' => $file->file_size,
                     'file_type' => $file->file_type,
                     'created_by' => $file->created_by,
@@ -100,7 +101,7 @@ class FileController
                 'group' => $file->group,
                 'file_name' => $file->file_name,
                 'file_description' => $file->file_description,
-                'file_url' => $file->file_url,
+                'file_url' => $_ENV['FILE_BASE_DOMAIN'] . $file->file_url,
                 'file_size' => $file->file_size,
                 'file_type' => $file->file_type,
                 'created_at' => $file->created_at->toDateTimeString(),
@@ -162,35 +163,45 @@ class FileController
 
             $fileExtension = pathinfo($file->getClientFilename(), PATHINFO_EXTENSION);
             $uniqueFileName = $this->generateUniqueFileName($fileExtension);
-            $filePath = "$uploadDir/$uniqueFileName";
+            $relativeFilePath = "/$year/$month/$uniqueFileName";
+            $absoluteFilePath = "$uploadBaseDir$relativeFilePath";
 
-            $file->moveTo($filePath);
+            DB::beginTransaction();
 
-            $fileUrl = $_ENV['FILE_BASE_DOMAIN'] . "/storage/$year/$month/$uniqueFileName";
+            $file->moveTo($absoluteFilePath);
+
+            $fileUrl = "/storage" . $relativeFilePath;
 
             $fileModel = FileModel::create([
                 'group' => $parsedBody['group'] ?? 'default',
                 'file_name' => pathinfo($file->getClientFilename(), PATHINFO_FILENAME),
                 'file_description' => $parsedBody['file_description'] ?? null,
-                'file_path' => $filePath,
+                'file_path' => $relativeFilePath,
                 'file_url' => $fileUrl,
                 'file_size' => $fileSize,
                 'file_type' => $fileType,
                 'created_by' => $parsedBody['created_by'] ?? 'system'
             ]);
 
+            DB::commit();
+
             return ResponseHandle::success($response, [
                 'id' => $fileModel->id,
                 'file_name' => $fileModel->file_name,
-                'file_url' => $fileModel->file_url,
+                'file_url' => $_ENV['FILE_BASE_DOMAIN'] . $fileModel->file_url,
                 'file_size' => $this->formatBytes($fileModel->file_size),
                 'file_type' => $fileModel->file_type,
                 'remaining_space' => $this->formatBytes($remainingBytes - $fileSize),
             ], 'File uploaded successfully', 201);
         } catch (Exception $e) {
+            DB::rollBack();
+            if (isset($absoluteFilePath) && file_exists($absoluteFilePath)) {
+                unlink($absoluteFilePath);
+            }
             return ResponseHandle::error($response, $e->getMessage(), 500);
         }
     }
+
 
     // PATCH /api/v1/files/{id}
     public function update(Request $request, Response $response, array $args): Response
@@ -218,26 +229,33 @@ class FileController
     public function delete(Request $request, Response $response, array $args): Response
     {
         try {
+            DB::beginTransaction();
+
             $file = FileModel::find($args['id']);
 
             if (!$file) {
                 return ResponseHandle::error($response, "File with ID {$args['id']} not found", 404);
             }
 
-            $filePath = "{$file->file_path}";
+            $uploadBaseDir = __DIR__ . "/../../public/storage";
+            $filePath = $uploadBaseDir . $file->file_path;
 
-            if (file_exists($filePath)) {
+            if (is_file($filePath) && file_exists($filePath)) {
                 if (!unlink($filePath)) {
+                    DB::rollBack();
                     return ResponseHandle::error($response, "Failed to delete file", 500);
                 }
             }
 
+            $file->delete();
+
             $this->cleanupEmptyDirs(dirname($filePath));
 
-            $file->delete();
+            DB::commit();
 
             return ResponseHandle::success($response, null, 'File deleted successfully');
         } catch (Exception $e) {
+            DB::rollBack();
             return ResponseHandle::error($response, $e->getMessage(), 500);
         }
     }
