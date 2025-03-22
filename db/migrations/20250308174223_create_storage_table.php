@@ -11,8 +11,8 @@ final class CreateStorageTable extends AbstractMigration
         // Table: api_connection
         $table = $this->table('api_connection', ['id' => false, 'primary_key' => ['id']]);
         $table->addColumn('id', 'integer', ['identity' => true])
-            ->addColumn('connection_name', 'string', ['limit' => 255, 'null' => false, 'collation' => 'utf8mb4_unicode_ci'])
-            ->addColumn('connection_key', 'string', ['limit' => 255, 'null' => false, 'collation' => 'utf8mb4_unicode_ci'])
+            ->addColumn('connection_name', 'string', ['limit' => 191, 'null' => false, 'collation' => 'utf8mb4_unicode_ci'])
+            ->addColumn('connection_key', 'string', ['limit' => 191, 'null' => false, 'collation' => 'utf8mb4_unicode_ci'])
             ->addColumn('created_at', 'timestamp', ['default' => 'CURRENT_TIMESTAMP', 'null' => false])
             ->addColumn('updated_at', 'timestamp', ['default' => 'CURRENT_TIMESTAMP', 'update' => 'CURRENT_TIMESTAMP', 'null' => false])
             ->addIndex(['connection_key'], ['unique' => true, 'name' => 'idx_connection_key'])
@@ -22,9 +22,9 @@ final class CreateStorageTable extends AbstractMigration
         $table = $this->table('tb_files', ['id' => false, 'primary_key' => ['id']]);
         $table->addColumn('id', 'integer', ['identity' => true])
             ->addColumn('group', 'string', ['limit' => 100, 'null' => false, 'collation' => 'utf8mb4_unicode_ci'])
-            ->addColumn('file_name', 'string', ['limit' => 255, 'null' => false, 'collation' => 'utf8mb4_unicode_ci'])
-            ->addColumn('file_description', 'string', ['limit' => 255, 'null' => true, 'collation' => 'utf8mb4_unicode_ci'])
-            ->addColumn('file_path', 'string', ['limit' => 512, 'null' => false, 'collation' => 'utf8mb4_unicode_ci'])
+            ->addColumn('file_name', 'string', ['limit' => 191, 'null' => false, 'collation' => 'utf8mb4_unicode_ci'])
+            ->addColumn('file_description', 'string', ['limit' => 191, 'null' => true, 'collation' => 'utf8mb4_unicode_ci'])
+            ->addColumn('file_path', 'text', ['null' => false, 'collation' => 'utf8mb4_unicode_ci'])
             ->addColumn('file_url', 'text', ['null' => true, 'collation' => 'utf8mb4_unicode_ci'])
             ->addColumn('file_size', 'integer', ['null' => true, 'signed' => false])
             ->addColumn('file_type', 'string', ['limit' => 50, 'null' => true, 'collation' => 'utf8mb4_unicode_ci'])
@@ -36,7 +36,6 @@ final class CreateStorageTable extends AbstractMigration
             ->addIndex(['file_type'], ['name' => 'idx_file_type'])
             ->addIndex(['created_at'], ['name' => 'idx_created_at'])
             ->addIndex(['created_by'], ['name' => 'idx_created_by'])
-            ->addIndex(['file_name', 'file_description'], ['type' => 'fulltext', 'name' => 'idx_fulltext_file'])
             ->create();
 
         // Table: tb_files_type_config
