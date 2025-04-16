@@ -146,6 +146,7 @@ class FileController
             }
 
             $fileType = $file->getClientMediaType();
+
             $safeFileTypes = array_column(FileTypeConfigModel::getAll(), 'mime_type');
 
             if (!in_array($fileType, $safeFileTypes)) {
