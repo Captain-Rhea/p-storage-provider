@@ -13,7 +13,7 @@ class FileRoute extends BaseRoute
             $group->get('/files', [FileController::class, 'getAll']);
             $group->get('/files/{id}', [FileController::class, 'getOne']);
             $group->post('/files', [FileController::class, 'upload']);
-            $group->patch('/files/{id}', [FileController::class, 'update']);
+            $group->put('/files/{id}', [FileController::class, 'update']);
             $group->delete('/files/{id}', [FileController::class, 'delete']);
         })->add(new AuthMiddleware());
     }
