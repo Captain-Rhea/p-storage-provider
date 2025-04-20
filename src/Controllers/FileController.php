@@ -48,8 +48,10 @@ class FileController
 
             if ($request->getQueryParams()['search'] ?? null) {
                 $search = $request->getQueryParams()['search'];
-                $query->where('file_name', 'LIKE', '%' . $search . '%')
-                    ->orWhere('file_description', 'LIKE', '%' . $search . '%');
+                $query->where(function ($q) use ($search) {
+                    $q->where('file_name', 'LIKE', '%' . $search . '%')
+                        ->orWhere('file_description', 'LIKE', '%' . $search . '%');
+                });
             }
 
             $files = $query->orderBy('updated_at', 'desc')->paginate($limit, ['*'], 'page', $page);
